@@ -4,7 +4,7 @@ USE p2p_communication;
 -- Minimal version
 CREATE TABLE users (
     user_id UUID PRIMARY KEY,
-    username VARCHAR(32) UNIQUE NOT NULL
+    username VARCHAR(32) UNIQUE NOT NULL,
 );
 
 CREATE TABLE onion_keys (
@@ -13,6 +13,14 @@ CREATE TABLE onion_keys (
     public_key BLOB NOT NULL,
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE message(
+    sender_id UUID REFERENCES users(user_id)ON DELETE CASCADE,
+    receiver_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    send_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message BLOB NOT NULL,
+    PRIMARY KEY (sender_id, receiver_id)
+)
 
 -- Friend Relationships (bidirectional)
 CREATE TABLE Friend (
@@ -141,3 +149,12 @@ BEGIN
     END IF;
 END//
 DELIMITER ;
+
+-- Update users table (safe migration)
+ALTER TABLE users
+ADD COLUMN is_online BOOLEAN NOT NULL DEFAULT FALSE,
+ADD COLUMN last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Create optimized index for presence checks
+CREATE INDEX idx_user_presence ON users(is_online, last_seen);
+

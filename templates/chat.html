@@ -15,10 +15,15 @@
             {% endfor %}
         </div>
 
-        <div class="message-input">
-            <input type="text" id="message-input" placeholder="Type your message...">
-            <button class="btn" id="send-btn">Send</button>
-        </div>
+        <form method="POST" action="/send-message">
+          <div class="message-input">
+            <input type="text" id="message-input" name="message" placeholder="Type your message...">
+            <button type="submit" class="btn" id="send-btn">Send</button>
+          </div>
+        </form>
+
+
+
     </div>
 </div>
 

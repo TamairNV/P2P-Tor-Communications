@@ -76,6 +76,7 @@ def profile_setup():
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('profile_setup'))
+    SQL_manager.execute_query("UPDATE users SET is_online = TRUE WHERE user_id = %s", (session['user_id'],))
 
     user_id = session['user_id']
 
@@ -164,41 +165,68 @@ def chat(friend):
         return redirect(url_for('index'))
 
     username = session['username']
-    chat_id = f"{username}_{friend}" if username < friend else f"{friend}_{username}"
 
-    messages = messages_db.get(chat_id, [])
+    messages = SQL_manager.execute_query("SELECT * FROM message WHERE receiver_id = %s", (session["user_id"]))["results"]
+    print(messages)
+    if messages is not None:
+        return render_template('chat.html',
+                               friend=friend,
+                               messages=messages)
 
-    return render_template('chat.html',
-                           friend=friend,
-                           messages=messages)
+    query = """
+    SELECT ok.* 
+    FROM onion_keys ok
+    JOIN users u ON ok.user_id = u.user_id
+    WHERE u.username = %s
+    ORDER BY ok.last_updated DESC
+    LIMIT 1
+    """
+
+    session['current_chat_data'] = SQL_manager.execute_query(
+        query,
+        params=(friend,),
+        fetch=True
+    )["results"][0]
+    session['current_chat_data']['username'] = friend
+    return render_template('chat.html',friend=friend)
 
 
-@app.route('/api/send-message', methods=['POST'])
+@app.route('/send-message', methods=['POST'])
 def send_message():
+
     if 'username' not in session:
         return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
+    print(session['current_chat_data'])
+    is_online = SQL_manager.execute_query("SELECT is_online FROM users WHERE user_id = %s", (session['current_chat_data']['user_id'],),fetch=True)["results"][0]
+    print(is_online)
+    request_message = request.form.get('message')
+    encrypted_message = request.form.get('encrypted_message')
+    print(encrypted_message)
+    if is_online:
+        P2P.send_data_to_onion(session['current_chat_data']["onion_address"],encrypted_message)
+    else:
+        pass
 
+
+
+
+    print(request_message)
+    return render_template('chat.html',friend=session['current_chat_data']['username'])
+
+import P2P
+@app.route('/receive', methods=['POST'])
+def receive_data():
     data = request.json
-    friend = data.get('friend')
-    message = data.get('message')
+    print(f"Received data: {data}")
+    return jsonify({"status": "success"}), 200
 
-    if not friend or not message:
-        return jsonify({'status': 'error', 'message': 'Invalid data'}), 400
 
-    username = session['username']
-    chat_id = f"{username}_{friend}" if username < friend else f"{friend}_{username}"
 
-    if chat_id not in messages_db:
-        messages_db[chat_id] = []
 
-    messages_db[chat_id].append({
-        'sender': username,
-        'message': message,
-        'timestamp': datetime.datetime.now().isoformat()
-    })
 
-    return jsonify({'status': 'success'})
-
+#@app.teardown_appcontext
+#def teardown(exception=None):
+#    SQL_manager.execute_query("UPDATE users SET is_online = FALSE WHERE user_id = %s", (session['user_id'],))
 
 if __name__ == '__main__':
     app.run(port=8000, debug=True)

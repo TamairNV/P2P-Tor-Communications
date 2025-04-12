@@ -70,7 +70,7 @@ def test_connection():
 
 
 # Test the connection
-test_connection()
+
 def release_connection(conn):
     connections.append(conn)
 
@@ -107,4 +107,3 @@ def execute_query(query, params=None, fetch=False):
 
     return result
 
-test_connection()
