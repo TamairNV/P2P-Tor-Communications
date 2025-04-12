@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Add Friend{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Add Friend</h2>
+
+    <form method="POST" action="{{ url_for('add_friend') }}">
+        <div class="form-group">
+            <label for="username">Search Directory</label>
+            <input type="text" id="username" name="username" list="user-list" required>
+            <datalist id="user-list">
+                {% for user in users %}
+                <option value="{{ user }}">
+                {% endfor %}
+            </datalist>
+        </div>
+
+        <button type="submit" class="btn">Add Friend</button>
+    </form>
+</div>
+{% endblock %}

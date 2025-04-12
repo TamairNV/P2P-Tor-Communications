@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with {{ friend }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Chat with {{ friend }}</h2>
+
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            {% for msg in messages %}
+            <div class="message">
+                <strong>{{ msg.sender }}:</strong> {{ msg.message }}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="message-input">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button class="btn" id="send-btn">Send</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

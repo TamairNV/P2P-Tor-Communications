@@ -18,7 +18,8 @@ class TorServer:
                  tor_executable: str = "tor",
                  hs_port: int = 80,
                  local_port: int = 8000,
-                 new_onion: bool = False):
+                 new_onion: bool = False,
+                 torrc_params: str = "" ):
         """
         Args:
             data_dir: Directory for Tor data files
@@ -34,6 +35,7 @@ class TorServer:
         self.new_onion = new_onion
         self.process = None
         self.onion_address = None
+        self.torrc_params = torrc_params
 
         self.hidden_service_dir = self.data_dir / "hidden_service"
         self.torrc_path = self.data_dir / "torrc"
@@ -57,23 +59,27 @@ class TorServer:
 
     def _generate_torrc(self) -> None:
         """Generate Tor configuration file."""
-        torrc_content = f"""
-        DataDirectory {self.data_dir}
-        HiddenServiceDir {self.hidden_service_dir}
-        HiddenServicePort {self.hs_port} 127.0.0.1:{self.local_port}
-        Log notice stdout
-        SocksPort 0
-        ControlPort 0
-        """
+        torrc_content = f"""\
+DataDirectory {self.data_dir}
+HiddenServiceDir {self.hidden_service_dir}
+HiddenServicePort {self.hs_port} 127.0.0.1:{self.local_port}
+Log notice stdout
+SocksPort 0
+ControlPort 0
+"""
+        # Add additional parameters without extra indentation
+        if self.torrc_params:
+            torrc_content += self.torrc_params.strip() + "\n"
 
         try:
             with open(self.torrc_path, "w") as f:
                 f.write(torrc_content)
             self.torrc_path.chmod(0o600)
+            self.logger.debug(f"Generated torrc at {self.torrc_path}")
+            self.logger.debug(f"Torrc content:\n{torrc_content}")
         except Exception as e:
             self.logger.error(f"Failed to create torrc: {e}")
             raise
-
     def _launch_tor(self) -> subprocess.Popen:
         """Start Tor subprocess."""
         try:
@@ -155,7 +161,6 @@ class TorServer:
 
 if __name__ == "__main__":
     try:
-
         # Example usage
         with TorServer(new_onion=False) as (onion_address, process):
             print(f"Service running at {onion_address}")

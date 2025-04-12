@@ -1,8 +1,6 @@
-
-        DataDirectory /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_data
-        HiddenServiceDir /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_data/hidden_service
-        HiddenServicePort 80 127.0.0.1:8000
-        Log notice stdout
-        SocksPort 0
-        ControlPort 0
-        
+DataDirectory /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_data
+HiddenServiceDir /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_data/hidden_service
+HiddenServicePort 80 127.0.0.1:8000
+Log notice stdout
+SocksPort 0
+ControlPort 0

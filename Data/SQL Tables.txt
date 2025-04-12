@@ -1,0 +1,143 @@
+CREATE DATABASE p2p_communication;
+USE p2p_communication;
+
+-- Minimal version
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY,
+    username VARCHAR(32) UNIQUE NOT NULL
+);
+
+CREATE TABLE onion_keys (
+    user_id UUID REFERENCES users(user_id),
+    onion_address VARCHAR(62) NOT NULL,
+    public_key BLOB NOT NULL,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Friend Relationships (bidirectional)
+CREATE TABLE Friend (
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    friend_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, friend_id),
+    CHECK (user_id < friend_id)  -- Ensures no duplicate reciprocal entries
+);
+CREATE TABLE FriendRequest (
+    request_id UUID PRIMARY KEY NOT NULL,
+    sender_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    recipient_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CHECK (sender_id != recipient_id),  -- Prevent self-requests
+    CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn'))
+);
+
+-- Indexes for performance
+CREATE INDEX idx_friend_user ON Friend(user_id);
+CREATE INDEX idx_friend_pair ON Friend(user_id, friend_id);
+CREATE INDEX idx_request_sender ON FriendRequest(sender_id);
+CREATE INDEX idx_request_recipient ON FriendRequest(recipient_id);
+
+DELIMITER //
+CREATE PROCEDURE AcceptFriendRequest(
+    IN current_user_uuid UUID,
+    IN friend_username VARCHAR(32)
+)
+BEGIN
+    DECLARE friend_uuid UUID;
+    DECLARE min_uuid UUID;
+    DECLARE max_uuid UUID;
+    DECLARE request_exists INT DEFAULT 0;
+
+    START TRANSACTION;
+
+    -- Get friend's UUID from username (fixed from original query)
+    SELECT user_id INTO friend_uuid
+    FROM users
+    WHERE username = friend_username
+    LIMIT 1;
+
+    -- Check for existing pending request in either direction
+    SELECT COUNT(*) INTO request_exists
+    FROM FriendRequest
+    WHERE (
+        (sender_id = current_user_uuid AND recipient_id = friend_uuid) OR
+        (sender_id = friend_uuid AND recipient_id = current_user_uuid)
+    )
+    AND status = 'pending';
+
+    IF friend_uuid IS NOT NULL AND request_exists > 0 THEN
+        -- Order UUIDs to satisfy Friend table constraint
+        IF current_user_uuid < friend_uuid THEN
+            SET min_uuid = current_user_uuid;
+            SET max_uuid = friend_uuid;
+        ELSE
+            SET min_uuid = friend_uuid;
+            SET max_uuid = current_user_uuid;
+        END IF;
+
+        -- Create friendship
+        INSERT IGNORE INTO Friend (user_id, friend_id)
+        VALUES (min_uuid, max_uuid);
+
+        -- Update all related requests (both directions)
+        UPDATE FriendRequest
+        SET status = 'accepted',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE (
+            (sender_id = current_user_uuid AND recipient_id = friend_uuid) OR
+            (sender_id = friend_uuid AND recipient_id = current_user_uuid)
+        );
+
+        COMMIT;
+    ELSE
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Invalid friend request or user not found';
+    END IF;
+END//
+DELIMITER ;
+
+
+
+DELIMITER //
+CREATE PROCEDURE RejectFriendRequest(
+    IN current_user_uuid UUID,
+    IN friend_username VARCHAR(32))
+BEGIN
+    DECLARE friend_uuid UUID;
+    DECLARE existing_request INT DEFAULT 0;
+
+    START TRANSACTION;
+
+    -- Get friend's UUID from username with validation
+    SELECT u.user_id INTO friend_uuid
+    FROM users u
+    WHERE u.username = friend_username
+    LIMIT 1;
+
+    -- Verify pending request exists where user is recipient
+    SELECT COUNT(*) INTO existing_request
+    FROM FriendRequest fr
+    WHERE fr.sender_id = friend_uuid
+      AND fr.recipient_id = current_user_uuid
+      AND fr.status = 'pending';
+
+    IF friend_uuid IS NOT NULL AND existing_request > 0 THEN
+        -- Update request and any potential duplicates
+        UPDATE FriendRequest
+        SET status = 'rejected',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE sender_id = friend_uuid
+          AND recipient_id = current_user_uuid
+          AND status = 'pending';
+
+        COMMIT;
+    ELSE
+        ROLLBACK;
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'No pending request found from this user';
+    END IF;
+END//
+DELIMITER ;

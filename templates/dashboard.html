@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="sidebar-layout">
+    <div class="sidebar">
+        <div class="card">
+            <h3>{{ username }}</h3>
+            <small>{{ onion_address }}</small>
+        </div>
+
+        <div class="card">
+            <h3>Online Friends</h3>
+            <ul>
+                {% for friend in friends %}
+                <li><a href="{{ url_for('chat', friend=friend.username) }}">{{ friend.username }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <!-- Friend Requests Section -->
+        <div class="card">
+            <h2>Pending Friend Requests</h2>
+            {% if friend_requests %}
+                <ul class="friend-requests">
+                    {% for request in friend_requests %}
+                    <li>
+                        <div class="request-info">
+                            <span class="sender">{{ request["username"] }}</span>
+                            <span class="timestamp">{{ request["created_at"] }}</span>
+                        </div>
+                        <div class="request-actions">
+                            <form action="{{ url_for('handle_friend_request') }}" method="POST">
+                                <input type="hidden" name="request_username" value="{{ request['username'] }}">
+                                <button type="submit" name="action" value="accept" class="btn btn-accept">Accept</button>
+                                <button type="submit" name="action" value="reject" class="btn btn-reject">Reject</button>
+                            </form>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No pending friend requests</p>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>Quick Actions</h2>
+            <div class="quick-actions">
+                <a href="{{ url_for('add_friend') }}" class="btn">Add Friend</a>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
