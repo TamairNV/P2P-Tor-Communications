@@ -5,7 +5,7 @@
 {% block content %}
 <div class="card">
     <h2>Create Your Profile</h2>
-    <form method="POST" action="{{ url_for('profile_setup') }}">
+    <form method="POST" action="{{ url_for('auth.profile_setup') }}">
         <div class="form-group">
             <label for="username">Username</label>
             <input type="text" id="username" name="username" required>

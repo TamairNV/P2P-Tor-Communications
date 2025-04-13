@@ -15,7 +15,7 @@
             {% endfor %}
         </div>
 
-        <form method="POST" action="/send-message">
+        <form method="POST" action="{{ url_for('chat.send_message') }}">
           <div class="message-input">
             <input type="text" id="message-input" name="message" placeholder="Type your message...">
             <button type="submit" class="btn" id="send-btn">Send</button>

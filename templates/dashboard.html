@@ -14,7 +14,7 @@
             <h3>Online Friends</h3>
             <ul>
                 {% for friend in friends %}
-                <li><a href="{{ url_for('chat', friend=friend.username) }}">{{ friend.username }}</a></li>
+                <li><a href="{{ url_for('chat.chat', friend=friend.username) }}">{{ friend.username }}</a></li>
                 {% endfor %}
             </ul>
         </div>
@@ -33,7 +33,7 @@
                             <span class="timestamp">{{ request["created_at"] }}</span>
                         </div>
                         <div class="request-actions">
-                            <form action="{{ url_for('handle_friend_request') }}" method="POST">
+                            <form action="{{ url_for('friend.handle_friend_request') }}" method="POST">
                                 <input type="hidden" name="request_username" value="{{ request['username'] }}">
                                 <button type="submit" name="action" value="accept" class="btn btn-accept">Accept</button>
                                 <button type="submit" name="action" value="reject" class="btn btn-reject">Reject</button>
@@ -51,7 +51,7 @@
         <div class="card">
             <h2>Quick Actions</h2>
             <div class="quick-actions">
-                <a href="{{ url_for('add_friend') }}" class="btn">Add Friend</a>
+                <a href="{{ url_for('friend.add_friend') }}" class="btn">Add Friend</a>
 
             </div>
         </div>
