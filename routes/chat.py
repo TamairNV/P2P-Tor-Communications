@@ -18,29 +18,10 @@ import SQL_manager
 from tor import get_onion_address
 chat_bp = Blueprint('chat', __name__)
 
-def get_messages():
+def get_messages(friend):
     messages = []
 
-    with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'r') as f:
-        lines = f.readlines()
-        for i in range(0, len(lines), 3):
-            m = {
-                "sent_at": lines[i].strip(),
-                "sender": lines[i + 1].strip(),
-                "message": lines[i + 2].strip()
-            }
-            messages.append(m)
-    print(messages)
-    return messages
 
-
-
-
-@chat_bp.route('/chat/<friend>')
-def chat(friend):
-
-    if 'username' not in session:
-        return redirect(url_for('index'))
     query = """
     SELECT ok.* 
     FROM onion_keys ok
@@ -72,7 +53,28 @@ def chat(friend):
     SQL_manager.execute_query("DELETE FROM message WHERE receiver_id = %s AND sender_id = %s",
                               params=(session["user_id"], session["current_chat_data"]["user_id"]))
 
-    messages = get_messages()
+    with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'r') as f:
+        lines = f.readlines()
+        for i in range(0, len(lines), 3):
+            m = {
+                "sent_at": lines[i].strip(),
+                "sender": lines[i + 1].strip(),
+                "message": lines[i + 2].strip()
+            }
+            messages.append(m)
+    print(messages)
+    return messages
+
+
+
+
+@chat_bp.route('/chat/<friend>')
+def chat(friend):
+
+    if 'username' not in session:
+        return redirect(url_for('index'))
+
+    messages = get_messages(friend)
 
     return render_template('chat.html',
                                friend=friend,
@@ -109,7 +111,7 @@ def send_message():
 
 
     print(request_message)
-    messages = get_messages()
+    messages = get_messages(session['current_chat_data']['username'])
     return render_template('chat.html',friend=session['current_chat_data']['username'],messages =messages)
 
 import P2P
