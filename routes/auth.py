@@ -38,19 +38,28 @@ def profile_setup():
 
         onion_address = get_onion_address()
         random_uuid = str(uuid.uuid4())
-        keys = Encryption_Manager.generate_key_pair()
-        public_key = keys[1]
+        keys = Encryption_Manager.generate_rsa_key_pair()
 
-        private_key = keys[0]
 
-        SQL_manager.execute_query("INSERT INTO users (user_id,username) VALUES (%s,%s)",params=(random_uuid,username,))
-        SQL_manager.execute_query("INSERT INTO onion_keys (user_id,onion_address,public_key) VALUES (%s,%s,%s)" , params=(random_uuid,onion_address,public_key,))
+
         session['username'] = username
         session['onion_address'] = onion_address
-        session['public_key'] = public_key
-        session['private_key'] = private_key
         session['user_id'] = random_uuid
 
+        os.makedirs("Data/Keys/" + session["username"], exist_ok=True)
+
+        str_prv, str_pub = Encryption_Manager.keys_to_strings(keys[0], keys[1])
+        with open("Data/Keys/" + session["username"] + "/" + "priv_key.pem", 'wb') as f:
+            f.write(str_prv.encode())
+
+        session['public_key'] = str_pub
+
+
+        SQL_manager.execute_query("INSERT INTO users (user_id,username) VALUES (%s,%s)",params=(random_uuid,username,))
+
+        SQL_manager.execute_query("INSERT INTO onion_keys (user_id,onion_address,public_key) VALUES (%s,%s,%s)",
+                                  params=(random_uuid, onion_address, str_pub,))
+        print("key added")
         return redirect(url_for('auth.dashboard'))
 
     return render_template('profile_setup.html')

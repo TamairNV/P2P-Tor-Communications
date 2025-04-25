@@ -47,19 +47,26 @@ def get_messages(friend):
     with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'a') as f:
         for message in waiting_messages:
             f.write(message["send_at"].strftime("%I:%M%p on %B %d, %Y") + "\n" + friend + "\n" + str(
-                message["message"]) + "\n")
+                message["message"][2:len( message["message"])-1]) + "\n")
 
 
     SQL_manager.execute_query("DELETE FROM message WHERE receiver_id = %s AND sender_id = %s",
                               params=(session["user_id"], session["current_chat_data"]["user_id"]))
 
+
     with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'r') as f:
         lines = f.readlines()
         for i in range(0, len(lines), 3):
+            if lines[i + 1].strip() == session["username"]:
+               message = lines[i + 2]
+            else:
+                message_line = lines[i+2].strip()
+                message = Encryption_Manager.decrypt_with_private_key(Encryption_Manager.read_private_key(session["username"]), message_line[2:len(message_line)-1])
+
             m = {
                 "sent_at": lines[i].strip(),
                 "sender": lines[i + 1].strip(),
-                "message": lines[i + 2].strip()
+                "message":message
             }
             messages.append(m)
     print(messages)
@@ -89,10 +96,13 @@ def send_message():
     if 'username' not in session:
         return jsonify({'status': 'error', 'message': 'Not authenticated'}), 401
     print(session['current_chat_data'])
+
     is_online = SQL_manager.execute_query("SELECT is_online FROM users WHERE user_id = %s", (session['current_chat_data']['user_id'],),fetch=True)["results"][0]
     print(is_online)
     request_message = request.form.get('message')
-    encrypted_message = request_message
+    print(session['current_chat_data']['public_key'])
+    print(request_message)
+    encrypted_message = Encryption_Manager.encrypt_with_public_key_pem(session['current_chat_data']['public_key'],request_message)
     print(encrypted_message)
     if is_online and False:
         print("sending data p2p")
