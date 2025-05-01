@@ -47,18 +47,18 @@ def get_messages(friend):
     with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'a') as f:
         for message in waiting_messages:
             f.write(message["send_at"].strftime("%I:%M%p on %B %d, %Y") + "\n" + friend + "\n" + str(
-                message["message"][2:len( message["message"])-1]) + "\n")
+                clean_message(message["message"])) + "\n")
 
 
     SQL_manager.execute_query("DELETE FROM message WHERE receiver_id = %s AND sender_id = %s",
                               params=(session["user_id"], session["current_chat_data"]["user_id"]))
 
-
     with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'r') as f:
         lines = f.readlines()
         for i in range(0, len(lines), 3):
             if lines[i + 1].strip() == session["username"]:
-               message = lines[i + 2]
+               encrypted_message = lines[i + 2]
+               message = Encryption_Manager.decrypt_message_with_symmetric_key(session["sym_key"], encrypted_message)
             else:
                 message_line = lines[i+2].strip()
                 message = Encryption_Manager.decrypt_with_private_key(Encryption_Manager.read_private_key(session["username"]), message_line[2:len(message_line)-1])
@@ -87,7 +87,10 @@ def chat(friend):
                                friend=friend,
                                messages=messages)
 
-
+def clean_message(message):
+    if message[0] == 'b':
+        return message[2:len(message)-2]
+    return message
 
 
 @chat_bp.route('/send-message', methods=['POST'])
@@ -111,9 +114,10 @@ def send_message():
         print("sending data to database")
         SQL_manager.execute_query("INSERT INTO message (sender_id, receiver_id, message) VALUES (%s,%s,%s)",params=(session['user_id'],session['current_chat_data']['user_id'],encrypted_message))
         pass
-
+    syKey = session["sym_key"]
+    print( "symmetric Key: "+syKey)
     with open("Data/Chat_data/"+ session["username"] +"/"  + session['current_chat_data']['username'], 'a') as f:
-        f.write(datetime.now().strftime("%I:%M%p on %B %d, %Y") + "\n" + session['username'] +"\n" +  encrypted_message + "\n")
+        f.write(datetime.now().strftime("%I:%M%p on %B %d, %Y") + "\n" + session['username'] +"\n" +  Encryption_Manager.encrypt_message_with_symmetric_key(syKey,request_message) + "\n")
         print("data written to file")
 
 

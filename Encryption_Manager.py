@@ -104,17 +104,79 @@ def load_private_key_from_string(private_pem_str, password=None):
     return private_key
 
 
+
+import base64
+import os
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.padding import PKCS7
+from cryptography.hazmat.backends import default_backend
+
+
+def create_symmetric_key() -> str:
+    """
+    Creates a symmetric key and returns it as a base64-encoded string.
+    """
+    key = os.urandom(32)  # AES-256 requires a 32-byte key
+    return base64.b64encode(key).decode('utf-8')
+
+
+def encrypt_message_with_symmetric_key(symmetric_key: str, message: str) -> str:
+    """
+    Encrypts a message using the symmetric key.
+
+    :param symmetric_key: The symmetric key as a base64-encoded string.
+    :param message: The plaintext message to encrypt.
+    :return: The encrypted message as a base64-encoded string.
+    """
+    key = base64.b64decode(symmetric_key.encode('utf-8'))
+    iv = os.urandom(16)  # Generate a random initialization vector (IV)
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+
+    padder = PKCS7(algorithms.AES.block_size).padder()
+    padded_message = padder.update(message.encode('utf-8')) + padder.finalize()
+
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded_message) + encryptor.finalize()
+
+    # Return the IV and ciphertext concatenated and base64-encoded
+    return base64.b64encode(iv + ciphertext).decode('utf-8')
+
+
+def decrypt_message_with_symmetric_key(symmetric_key: str, encrypted_message: str) -> str:
+    """
+    Decrypts a message using the symmetric key.
+
+    :param symmetric_key: The symmetric key as a base64-encoded string.
+    :param encrypted_message: The encrypted message as a base64-encoded string.
+    :return: The decrypted plaintext message as a string.
+    """
+    key = base64.b64decode(symmetric_key.encode('utf-8'))
+    encrypted_data = base64.b64decode(encrypted_message.encode('utf-8'))
+
+    iv = encrypted_data[:16]  # Extract the IV
+    ciphertext = encrypted_data[16:]  # Extract the ciphertext
+
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    padded_message = decryptor.update(ciphertext) + decryptor.finalize()
+
+    unpadder = PKCS7(algorithms.AES.block_size).unpadder()
+    message = unpadder.update(padded_message) + unpadder.finalize()
+
+    return message.decode('utf-8')
+
+
+
 if __name__ == "__main__":
 
-    print("------")
+    syKey = create_symmetric_key()
+    print(syKey)
+    message = "Hello World!"
 
-    print(read_private_key("TNV"))
+    encrypted_message = encrypt_message_with_symmetric_key(syKey, message)
 
-    m = 'UnxQAZZMSxmfmHLQrInhIRtTI6h57guEv7+rPJJRWt/inBsp0/frbK0zeDJqcL30XqGeRcauVJ8+uFuRhYJ1K2w0hl4e90ZFtdg6Ts8KmWXbTqoDrrCgf93MkSHFn1WHMBQ5S51dSgMYTgIG0gNeD0/1rUGUkpwXbjPXtxdVKGyZoIMSXvsLXbZ7IlQAtFWnsLkGh+oP3jNxhEQ0oSzjp3YDOx292rxh/pmZkgUu2lovqgS+fGANTukAtnslLH4bOEV5MfSbRmvEXVgL7sir+h6Fvef5m9C5lB3xrVgGuH8VszOXgp3ZWlbdf58wCWm6Bl9e1lp+dDO0EcdIoUyPdw=='
+    print(encrypted_message)
 
-    t = "b'UnxQAZZMSxmfmHLQrInhIRtTI6h57guEv7+rPJJRWt/inBsp0/frbK0zeDJqcL30XqGeRcauVJ8+uFuRhYJ1K2w0hl4e90ZFtdg6Ts8KmWXbTqoDrrCgf93MkSHFn1WHMBQ5S51dSgMYTgIG0gNeD0/1rUGUkpwXbjPXtxdVKGyZoIMSXvsLXbZ7IlQAtFWnsLkGh+oP3jNxhEQ0oSzjp3YDOx292rxh/pmZkgUu2lovqgS+fGANTukAtnslLH4bOEV5MfSbRmvEXVgL7sir+h6Fvef5m9C5lB3xrVgGuH8VszOXgp3ZWlbdf58wCWm6Bl9e1lp+dDO0EcdIoUyPdw=='"
-    print(str(t))
-    print(t[2:len(t)-1])
-    print(decrypt_with_private_key(read_private_key("TNV"),m))
-
+    decrypted_message = decrypt_message_with_symmetric_key(syKey, encrypted_message)
+    print(decrypted_message)
 

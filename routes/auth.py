@@ -32,6 +32,10 @@ def profile_setup():
             session['onion_address'] = key_data["onion_address"]
             session['public_key'] = key_data["public_key"]
             session['user_id'] = userData["user_id"]
+
+            with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'r') as f:
+                session['sym_key'] = f.readline().strip()
+            print(session['sym_key'])
             return redirect(url_for('auth.dashboard'))
 
 
@@ -52,13 +56,16 @@ def profile_setup():
         with open("Data/Keys/" + session["username"] + "/" + "priv_key.pem", 'wb') as f:
             f.write(str_prv.encode())
 
+        symmetric_key = Encryption_Manager.create_symmetric_key()
+        with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'wb') as f:
+            f.write(symmetric_key.encode())
+
+
         session['public_key'] = str_pub
+        session['sym_key'] = symmetric_key
 
+        SQL_manager.execute_query("INSERT INTO users (user_id,username) VALUES (%s,%s); INSERT INTO onion_keys (user_id,onion_address,public_key) VALUES (%s,%s,%s);",params=(random_uuid,username,random_uuid, onion_address, str_pub,))
 
-        SQL_manager.execute_query("INSERT INTO users (user_id,username) VALUES (%s,%s)",params=(random_uuid,username,))
-
-        SQL_manager.execute_query("INSERT INTO onion_keys (user_id,onion_address,public_key) VALUES (%s,%s,%s)",
-                                  params=(random_uuid, onion_address, str_pub,))
         print("key added")
         return redirect(url_for('auth.dashboard'))
 
