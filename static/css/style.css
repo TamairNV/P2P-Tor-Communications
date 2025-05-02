@@ -180,3 +180,9 @@ header {
 .btn-reject:hover {
     background-color: #d32f2f;
 }
+
+.red-text{
+    font-size: 12px;
+    align-content: center;
+    color: #d32f2f;
+}

@@ -7,6 +7,11 @@ CREATE TABLE users (
     username VARCHAR(32) UNIQUE NOT NULL,
 );
 
+Create Table Password{
+    user_id UUID PRIMARY KEY,
+    salt VARCHAR(16) NOT NULL,
+}
+
 CREATE TABLE onion_keys (
     user_id UUID REFERENCES users(user_id),
     onion_address VARCHAR(62) NOT NULL,
@@ -158,3 +163,26 @@ ADD COLUMN last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 -- Create optimized index for presence checks
 CREATE INDEX idx_user_presence ON users(is_online, last_seen);
 
+DELIMITER //
+CREATE OR REPLACE PROCEDURE register_user(
+    IN p_user_id UUID,  -- Native UUID type
+    IN p_username VARCHAR(32),
+    IN p_onion_addr VARCHAR(62),
+    IN p_pubkey BLOB,
+    IN p_salt VARCHAR(16)
+)
+BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+    INSERT INTO users (user_id, username) VALUES (p_user_id, p_username);
+    INSERT INTO onion_keys (user_id, onion_address, public_key, last_updated)
+    VALUES (p_user_id, p_onion_addr, p_pubkey, NOW());
+    INSERT INTO password (user_id, salt) VALUES (p_user_id, p_salt);
+    COMMIT;
+END //
+DELIMITER ;

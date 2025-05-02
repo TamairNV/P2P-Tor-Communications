@@ -9,6 +9,7 @@ import hashlib
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 def generate_rsa_key_pair():
@@ -165,18 +166,48 @@ def decrypt_message_with_symmetric_key(symmetric_key: str, encrypted_message: st
 
     return message.decode('utf-8')
 
+import bcrypt
+
+def create_key_from_password(password: str) -> tuple[str, bytes]:
+    salt = bcrypt.gensalt()
+    """Derives a 32-byte AES key from a password."""
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,  # AES-256 key size
+        salt=salt,
+        iterations=100000,  # Security parameter
+        backend=default_backend()
+    )
+    key = kdf.derive(password.encode())
+    return (base64.b64encode(key).decode(),salt)  # Base64 for compatibility
+
+def hash_password(password,salt):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,  # AES-256 key size
+        salt=salt,
+        iterations=100000,  # Security parameter
+        backend=default_backend()
+    )
+    key = kdf.derive(password.encode())
+
+    return (base64.b64encode(key).decode())
+
 
 
 if __name__ == "__main__":
 
-    syKey = create_symmetric_key()
-    print(syKey)
-    message = "Hello World!"
+    password = "hello"
+    hashed_password, salt = create_key_from_password(password)
+    #save salt
+    print(len(salt.decode()))
+    key = "123123"
+    print(hashed_password, len(hashed_password))
+    enc_key = encrypt_message_with_symmetric_key(hashed_password, key)
+    print("key ency "+base64.b64encode(enc_key.encode()).decode())
 
-    encrypted_message = encrypt_message_with_symmetric_key(syKey, message)
+    entered_password = "hello"
+    new_hashed_password = hash_password(entered_password,salt)
 
-    print(encrypted_message)
-
-    decrypted_message = decrypt_message_with_symmetric_key(syKey, encrypted_message)
-    print(decrypted_message)
-
+    key_de = decrypt_message_with_symmetric_key(new_hashed_password, enc_key)
+    print(key_de)

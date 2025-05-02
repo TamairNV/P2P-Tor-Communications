@@ -4,7 +4,7 @@ import requests
 
 def send_data_to_onion(target_onion, data):
     # The .onion address should include the port if not 80
-    url = f"http://{target_onion}/receive"
+    url = f"{target_onion}/receive"
 
     try:
         # Use Tor's SOCKS proxy (assuming default Tor configuration)

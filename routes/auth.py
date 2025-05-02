@@ -1,3 +1,4 @@
+import base64
 import uuid
 
 from flask import Blueprint
@@ -5,7 +6,7 @@ from flask import Blueprint
 from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for,flash
 import os
 import secrets
 
@@ -37,37 +38,6 @@ def profile_setup():
                 session['sym_key'] = f.readline().strip()
             print(session['sym_key'])
             return redirect(url_for('auth.dashboard'))
-
-
-
-        onion_address = get_onion_address()
-        random_uuid = str(uuid.uuid4())
-        keys = Encryption_Manager.generate_rsa_key_pair()
-
-
-
-        session['username'] = username
-        session['onion_address'] = onion_address
-        session['user_id'] = random_uuid
-
-        os.makedirs("Data/Keys/" + session["username"], exist_ok=True)
-
-        str_prv, str_pub = Encryption_Manager.keys_to_strings(keys[0], keys[1])
-        with open("Data/Keys/" + session["username"] + "/" + "priv_key.pem", 'wb') as f:
-            f.write(str_prv.encode())
-
-        symmetric_key = Encryption_Manager.create_symmetric_key()
-        with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'wb') as f:
-            f.write(symmetric_key.encode())
-
-
-        session['public_key'] = str_pub
-        session['sym_key'] = symmetric_key
-
-        SQL_manager.execute_query("INSERT INTO users (user_id,username) VALUES (%s,%s); INSERT INTO onion_keys (user_id,onion_address,public_key) VALUES (%s,%s,%s);",params=(random_uuid,username,random_uuid, onion_address, str_pub,))
-
-        print("key added")
-        return redirect(url_for('auth.dashboard'))
 
     return render_template('profile_setup.html')
 
@@ -113,3 +83,99 @@ def dashboard():
                            friends=friends,
                            friend_requests=friend_requests)
 
+
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+
+        output = SQL_manager.execute_query("SELECT p.salt,o.public_key FROM password p,users u,onion_keys o WHERE  u.username = %s AND u.user_id = p.user_id AND o.user_id = u.user_id", params=[username], fetch=True)["results"]
+        print(output)
+        if not output:
+            return redirect(url_for('auth.login'))
+
+        salt,pub_key = output[0]["salt"], output[0]["public_key"]
+
+        sym_key = Encryption_Manager.hash_password(password, salt.encode())
+
+
+        with open(f"Data/Keys/" + username + "/" + "priv_key.pem", 'r') as f:
+            enc_key = f.readline().strip()
+            try:
+                Encryption_Manager.decrypt_message_with_symmetric_key(sym_key, enc_key)
+            except:
+                flash("Username or password incorrect")
+                return redirect(url_for('auth.login'))
+
+        userData = \
+        SQL_manager.execute_query("SELECT * FROM users WHERE username = %s", params=[username, ], fetch=True)["results"]
+        if userData:
+            userData = userData[0]
+            key_data = \
+            SQL_manager.execute_query("SELECT * FROM onion_keys WHERE user_id = %s", params=[userData["user_id"]],
+                                      fetch=True)["results"][0]
+            session['username'] = username
+            session['onion_address'] = key_data["onion_address"]
+            session['public_key'] = key_data["public_key"]
+            session['user_id'] = userData["user_id"]
+            return redirect(url_for('auth.dashboard'))
+
+    return render_template('login.html')
+
+
+@auth_bp.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+
+        if password != confirm_password:
+            flash('Passwords do not match!', 'error')
+            return redirect(url_for('auth.signup'))
+
+
+        is_name_taken= SQL_manager.execute_query("SELECT 1 FROM users WHERE username = %s LIMIT 1", params = (username,),fetch=True)['results']
+
+        if is_name_taken:
+            flash('Username is already taken!', 'error')
+            return redirect(url_for('auth.signup'))
+
+        onion_address = get_onion_address()
+        random_uuid = str(uuid.uuid4())
+        keys = Encryption_Manager.generate_rsa_key_pair()
+
+        sym_key,salt = Encryption_Manager.create_key_from_password(password)
+
+
+        session['username'] = username
+        session['onion_address'] = onion_address
+        session['user_id'] = random_uuid
+
+        os.makedirs("Data/Keys/" + session["username"], exist_ok=True)
+
+        str_prv, str_pub = Encryption_Manager.keys_to_strings(keys[0], keys[1])
+        with open("Data/Keys/" + session["username"] + "/" + "priv_key.pem", 'wb') as f:
+            key =  Encryption_Manager.encrypt_message_with_symmetric_key(sym_key, str_prv)
+            f.write(key.encode())
+
+        symmetric_key = Encryption_Manager.create_symmetric_key()
+        with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'wb') as f:
+            f.write(symmetric_key.encode())
+
+
+        session['public_key'] = str_pub
+        session['sym_key'] = symmetric_key
+
+        SQL_manager.get_connection().cursor().callproc('register_user', (
+            random_uuid, username,
+            onion_address, str_pub,
+            salt
+        ))
+        print("key added")
+        return redirect(url_for('auth.dashboard'))
+
+
+    return render_template('signup.html')

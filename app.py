@@ -17,7 +17,7 @@ app.secret_key = secrets.token_hex(16)
 def index():
     if 'username' in session:
         return redirect(url_for('auth.dashboard'))
-    return render_template('index.html',onion_address = get_onion_address())
+    return  redirect(url_for('auth.login'))
 
 
 #@app.teardown_appcontext
