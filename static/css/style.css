@@ -186,3 +186,90 @@ header {
     align-content: center;
     color: #d32f2f;
 }
+/* Group Chat Creation Styles */
+.group-creation-form {
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.group-name-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: #333;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: var(--text);
+}
+
+.friends-list {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.friend-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #444;
+}
+
+.friend-item:last-child {
+    border-bottom: none;
+}
+
+.friend-checkbox {
+    margin-right: 15px;
+}
+
+.friend-info {
+    flex-grow: 1;
+}
+
+.friend-name {
+    font-weight: bold;
+}
+
+.friend-status {
+    font-size: 0.8em;
+    color: #999;
+}
+
+.create-group-btn {
+    background-color: var(--primary);
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    width: 100%;
+}
+
+.create-group-btn:hover {
+    background-color: var(--secondary);
+}
+
+/* Error/Success Messages */
+.group-creation-message {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 4px;
+    text-align: center;
+}
+
+.group-creation-success {
+    background-color: rgba(76, 175, 80, 0.2);
+    border: 1px solid var(--success);
+}
+
+.group-creation-error {
+    background-color: rgba(244, 67, 54, 0.2);
+    border: 1px solid var(--error);
+}

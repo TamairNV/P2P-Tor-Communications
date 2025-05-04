@@ -46,6 +46,41 @@ CREATE TABLE FriendRequest (
     CHECK (status IN ('pending', 'accepted', 'rejected', 'withdrawn'))
 );
 
+CREATE TABLE GroupChat (
+    ID UUID PRIMARY KEY NOT NULL,
+    name VARCHAR(64) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE GroupChatMember (
+    ID UUID PRIMARY KEY NOT NULL,
+    group_id UUID NOT NULL REFERENCES GroupChat(ID) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    member_type ENUM('Owner', 'Admin', 'Member', 'Viewer') DEFAULT 'Member',
+    UNIQUE(group_id, user_id)
+);
+
+CREATE TABLE GroupChatMessage(
+    ID UUID PRIMARY KEY NOT NULL,
+    group_id UUID NOT NULL REFERENCES GroupChat(ID) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    message BLOB NOT NULL,
+);
+
+CREATE TABLE EncryptedGroupChatMessage(
+    ID UUID PRIMARY KEY NOT NULL,
+    message_id UUID NOT NULL REFERENCES GroupChatMessage(ID) ON DELETE CASCADE,
+    receiver_id UUID NOT NULL REFERENCES GroupChatMember(ID) ON DELETE CASCADE,
+    UNIQUE(message_id, receiver_id)
+);
+
+-- Create indexes for performance
+CREATE INDEX idx_group_member ON GroupChatMember(group_id);
+CREATE INDEX idx_group_message ON GroupChatMessage(group_id);
+CREATE INDEX idx_encrypted_message ON EncryptedGroupChatMessage(receiver_id);
+
 -- Indexes for performance
 CREATE INDEX idx_friend_user ON Friend(user_id);
 CREATE INDEX idx_friend_pair ON Friend(user_id, friend_id);
@@ -165,7 +200,7 @@ CREATE INDEX idx_user_presence ON users(is_online, last_seen);
 
 DELIMITER //
 CREATE OR REPLACE PROCEDURE register_user(
-    IN p_user_id UUID,  -- Native UUID type
+    IN p_user_id UUID,
     IN p_username VARCHAR(32),
     IN p_onion_addr VARCHAR(62),
     IN p_pubkey BLOB,
@@ -186,3 +221,74 @@ BEGIN
     COMMIT;
 END //
 DELIMITER ;
+
+
+
+
+
+
+
+DELIMITER //
+CREATE OR REPLACE PROCEDURE create_group_chat(
+    IN group_chat_id UUID,
+    IN group_chat_name VARCHAR(64),
+    IN user_ids TEXT,  -- Comma-separated list of user IDs
+    IN UUIDs TEXT
+)
+BEGIN
+
+
+
+    DECLARE current_pos INT DEFAULT 1;
+    DECLARE next_pos INT;
+    DECLARE current_id VARCHAR(100);
+    DECLARE current_UUID UUID;
+    DECLARE ids_length INT;
+    DECLARE lastID UUID;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    -- Calculate length of the string
+    SET ids_length = LENGTH(user_ids);
+    -- create group chat
+    INSERT INTO GroupChat(ID,name) VALUES(group_chat_id,group_chat_name);
+
+    -- Loop through comma-separated values
+    WHILE current_pos <= ids_length DO
+        -- Find next comma position
+        SET next_pos = LOCATE(',', user_ids, current_pos);
+
+        IF next_pos = 0 THEN
+            SET next_pos = ids_length + 1;
+        END IF;
+
+        -- Extract current ID
+        SET current_id = SUBSTRING(user_ids, current_pos, next_pos - current_pos);
+        SET current_UUID = SUBSTRING(UUIDs, current_pos, next_pos - current_pos);
+
+        -- Trim whitespace
+        SET current_id = TRIM(current_id);
+
+        -- Only insert if ID is not empty
+        IF current_id != '' THEN
+            INSERT INTO GroupChatMember (ID,group_id, user_id,joined_at)
+            VALUES (current_UUID, group_chat_id, current_id, NOW());
+        END IF;
+
+        -- Move to next position
+        SET current_pos = next_pos + 1;
+    END WHILE;
+    lastID = SUBSTRING(user_ids, current_pos-1, next_pos - current_pos-1);
+    UPDATE GroupChatMember
+    SET member_type = 'Owner'
+    WHERE group_id = group_chat_id AND
+    user_id = lastID
+
+    COMMIT;
+END //
+
+DELIMITER ;
+

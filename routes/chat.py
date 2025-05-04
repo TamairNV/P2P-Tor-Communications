@@ -3,7 +3,7 @@
 
 import uuid
 
-from flask import Blueprint
+from flask import Blueprint, flash
 
 from datetime import datetime
 from pathlib import Path
@@ -127,6 +127,57 @@ def send_message():
     print(request_message)
     messages = get_messages(session['current_chat_data']['username'])
     return render_template('chat.html',friend=session['current_chat_data']['username'],messages =messages)
+
+@chat_bp.route('/create_group_chat', methods=['POST','GET'])
+def create_group_chat():
+    user_id = session['user_id']
+    friends = SQL_manager.execute_query(
+        """
+        SELECT u.username ,u.is_online,u.user_id
+        FROM (
+            SELECT friend_id as id FROM Friend WHERE user_id = %s
+            UNION
+            SELECT user_id as id FROM Friend WHERE friend_id = %s
+        ) combined
+        JOIN users u ON combined.id = u.user_id
+        """,
+        params=(user_id, user_id),
+        fetch=True
+    )["results"]
+
+
+    if request.method == 'POST':
+        gc_name = request.form.get('group_name')
+        selected_friends = request.form.getlist('selected_friends')
+
+        if not gc_name:
+            flash('Group name is required', 'error')
+            return redirect(url_for('chat.create_group_chat'))
+
+        if len(selected_friends) < 1:
+            flash('You must select at least one friend', 'error')
+            return redirect(url_for('chat.create_group_chat'))
+
+
+        friend_ids = ""
+        friend_member_uuid = ""
+        for friend in selected_friends:
+            friend_ids = friend + ","
+            friend_member_uuid = str(uuid.uuid4()) + ","
+
+        friend_ids += session['user_id']
+        friend_member_uuid += str(uuid.uuid4())
+
+
+
+        random_uuid = str(uuid.uuid4())
+
+        SQL_manager.get_connection().cursor().callproc('create_group_chat',(random_uuid,gc_name,friend_ids,friend_member_uuid))
+        print("group chat created")
+        return redirect(url_for('auth.dashboard'))
+
+    return render_template('create_group_chat.html',friends = friends)
+
 
 import P2P
 @chat_bp.route('/receive', methods=['POST'])

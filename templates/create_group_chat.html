@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Group Chat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Create New Group Chat</h1>
+        </header>
+
+        <div class="group-creation-form">
+            <form method="POST" action="{{ url_for('chat.create_group_chat') }}">
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="group-creation-message group-creation-{{ category }}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Group Name Field -->
+                <div class="form-group">
+                    <label for="group_name">Group Name</label>
+                    <input type="text" id="group_name" name="group_name" class="group-name-input" required>
+                </div>
+
+                <!-- Friends List -->
+                <h3>Select Friends to Add</h3>
+                <div class="friends-list">
+                    {% for friend in friends %}
+                        <div class="friend-item">
+                            <input type="checkbox" id="friend_{{ friend.user_id }}" name="selected_friends" value="{{ friend.user_id }}" class="friend-checkbox">
+                            <div class="friend-info">
+                                <span class="friend-name">{{ friend.username }}</span>
+                                <span class="friend-status">{% if friend.online %}Online{% else %}Offline{% endif %}</span>
+                            </div>
+                        </div>
+                    {% else %}
+                        <p>You don't have any friends yet.</p>
+                    {% endfor %}
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="create-group-btn">Create Group Chat</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
