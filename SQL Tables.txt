@@ -281,11 +281,77 @@ BEGIN
         -- Move to next position
         SET current_pos = next_pos + 1;
     END WHILE;
-    lastID = SUBSTRING(user_ids, current_pos-1, next_pos - current_pos-1);
-    UPDATE GroupChatMember
-    SET member_type = 'Owner'
-    WHERE group_id = group_chat_id AND
-    user_id = lastID
+
+
+    -- Get the last user ID from the user_ids string using SUBSTRING_INDEX
+    -- SUBSTRING_INDEX(string, delimiter, count) with count = -1 returns
+    -- everything after the last delimiter.
+    SET @last_user_id_str = SUBSTRING_INDEX(user_ids, ',', -1);
+
+    -- Update the member_type for the last user ID to 'Owner'
+    -- Ensure @last_user_id_str is not empty before updating
+    IF @last_user_id_str != '' THEN
+        UPDATE GroupChatMember
+        SET member_type = 'Owner'
+        WHERE group_id = group_chat_id AND
+              user_id = @last_user_id_str; -- Compare with the extracted string value
+    END IF;
+
+
+    COMMIT;
+END //
+
+DELIMITER ;
+
+
+
+
+CREATE TABLE messageRead(
+    ID INT AUTO_INCREMENT primary key,
+    group_chat_id UUID NOT NULL REFERENCES groupchat(ID),
+    reader UUID NOT NULL REFERENCES users(user_id),
+    is_read boolean default 0,
+    read_at TIMESTAMP default NOW()
+
+)
+
+DELIMITER //
+CREATE OR REPLACE PROCEDURE send_message(
+    IN message_id UUID,
+    IN group_id UUID,
+    IN sender_id UUID,
+    IN messageJson BLOB
+)
+BEGIN
+
+    DECLARE member_number INT;
+    DECLARE i INT default 0;
+    DECLARE current_reader UUID;
+
+
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    INSERT INTO groupchatmessage (ID,group_id,sender_id,message) VALUES (message_id,group_id,sender_id,messageJson);
+
+    SET member_number = (SELECT COUNT(ID) FROM groupchatmember gcm WHERE gcm.group_id = group_id);
+    WHILE i < member_number DO
+        SET current_reader =
+            (SELECT user_id FROM groupchatmember gcm
+                       WHERE gcm.group_id = group_id ORDER BY ID LIMIT 1 OFFSET i);
+        SELECT current_reader;
+        INSERT INTO messageread (group_chat_id,reader)
+        VALUES (group_id,current_reader);
+        SET i = i + 1;
+    END WHILE;
+
+    UPDATE messageread
+    SET is_read = 1
+    WHERE reader = sender_id AND group_chat_id = group_id;
 
     COMMIT;
 END //

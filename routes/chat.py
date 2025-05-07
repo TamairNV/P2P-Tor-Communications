@@ -61,7 +61,7 @@ def get_messages(friend):
                message = Encryption_Manager.decrypt_message_with_symmetric_key(session["sym_key"], encrypted_message)
             else:
                 message_line = lines[i+2].strip()
-                message = Encryption_Manager.decrypt_with_private_key(Encryption_Manager.read_private_key(session["username"]), message_line[2:len(message_line)-1])
+                message = Encryption_Manager.decrypt_with_private_key(Encryption_Manager.read_private_key(session["username"],session['sym_key']), message_line[2:len(message_line)-1])
 
             m = {
                 "sent_at": lines[i].strip(),
@@ -161,12 +161,15 @@ def create_group_chat():
 
         friend_ids = ""
         friend_member_uuid = ""
+        print("friends: " ,selected_friends)
         for friend in selected_friends:
-            friend_ids = friend + ","
-            friend_member_uuid = str(uuid.uuid4()) + ","
+            friend_ids += friend + ","
+            friend_member_uuid += str(uuid.uuid4()) + ","
 
         friend_ids += session['user_id']
         friend_member_uuid += str(uuid.uuid4())
+        print(friend_ids)
+        print(friend_member_uuid)
 
 
 

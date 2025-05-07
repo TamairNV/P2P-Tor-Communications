@@ -54,7 +54,6 @@ def add_friend():
     if request.method == 'POST':
         friend_username = request.form.get('username')
         friend_user_data = SQL_manager.execute_query("SELECT * FROM users WHERE username = %s", params=(friend_username,),fetch=True)["results"][0]
-        print(friend_user_data)
         SQL_manager.execute_query('INSERT INTO FriendRequest (request_id, sender_id, recipient_id) VALUES (%s,%s,%s)',params=(str(uuid.uuid4()),session["user_id"],friend_user_data["user_id"]))
         return redirect(url_for('auth.dashboard'))
     else:

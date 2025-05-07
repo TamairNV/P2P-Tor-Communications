@@ -50,33 +50,61 @@ def dashboard():
 
     user_id = session['user_id']
 
-    friends = SQL_manager.execute_query(
-        """
-        SELECT u.username 
-        FROM (
-            SELECT friend_id as id FROM Friend WHERE user_id = %s
-            UNION
-            SELECT user_id as id FROM Friend WHERE friend_id = %s
-        ) combined
-        JOIN users u ON combined.id = u.user_id
-        """,
-        params=(user_id, user_id),
-        fetch=True
-    )["results"]
+    combined_query = """
+    SELECT
+        u.username,
+        NULL as created_at, -- created_at is not relevant for friends, use NULL
+        'friend' as type    -- Label this row as a 'friend'
+    FROM (
+        SELECT friend_id as id FROM Friend WHERE user_id = %s
+        UNION -- UNION removes duplicates, if you want to keep duplicates use UNION ALL
+        SELECT user_id as id FROM Friend WHERE friend_id = %s
+    ) combined
+    JOIN users u ON combined.id = u.user_id
 
-    friend_requests = SQL_manager.execute_query(
-    """
-    SELECT u.username ,created_at
+    UNION ALL -- Use UNION ALL to include all rows from both selects
+
+    SELECT
+        u.username,
+        fr.created_at,      -- Include created_at for friend requests
+        'friend_request' as type -- Label this row as a 'friend_request'
     FROM FriendRequest fr
     JOIN users u ON fr.sender_id = u.user_id
     WHERE fr.recipient_id = %s AND fr.status = 'pending'
-    """,
-    params=(user_id,),
-    fetch=True
+    """
+
+    # Execute the combined query
+    # Note: The parameters need to match the order of placeholders in the query.
+    # The user_id for the friend query appears twice, and once for the friend request query.
+    combined_results = SQL_manager.execute_query(
+        combined_query,
+        params=(user_id, user_id, user_id),
+        fetch=True
     )["results"]
 
+    # Initialize empty lists for friends and friend requests
+    friends = []
+    friend_requests = []
+
+    # Iterate through the combined results and separate them based on the 'type' column
+    for row in combined_results:
+        # Assuming your SQL_manager returns rows as dictionaries or objects with attribute access
+        # Adjust the access method (e.g., row['type'], row.type) based on your SQL_manager implementation
+        row_type = row['type']  # Access the 'type' column
+        username = row['username']  # Access the 'username' column
+
+        if row_type == 'friend':
+            # For friends, just add the username to the friends list
+            friends.append({'username' : username})
+        elif row_type == 'friend_request':
+            # For friend requests, add username and created_at to the friend_requests list
+            created_at = row['created_at']  # Access the 'created_at' column
+            friend_requests.append({'username': username, 'created_at': created_at})
+
+    # Now your 'friends' and 'friend_requests' lists are populated
     print(friend_requests)
     print(friends)
+
     return render_template('dashboard.html',
                            username=session['username'],
                            onion_address=session.get('onion_address', ''),
@@ -92,15 +120,13 @@ def login():
 
 
         output = SQL_manager.execute_query("SELECT p.salt,o.public_key FROM password p,users u,onion_keys o WHERE  u.username = %s AND u.user_id = p.user_id AND o.user_id = u.user_id", params=[username], fetch=True)["results"]
-        print(output)
         if not output:
             return redirect(url_for('auth.login'))
 
         salt,pub_key = output[0]["salt"], output[0]["public_key"]
 
         sym_key = Encryption_Manager.hash_password(password, salt.encode())
-
-
+        session["sym_key"] = sym_key
         with open(f"Data/Keys/" + username + "/" + "priv_key.pem", 'r') as f:
             enc_key = f.readline().strip()
             try:
@@ -110,15 +136,12 @@ def login():
                 return redirect(url_for('auth.login'))
 
         userData = \
-        SQL_manager.execute_query("SELECT * FROM users WHERE username = %s", params=[username, ], fetch=True)["results"]
+        SQL_manager.execute_query("SELECT * FROM users u ,onion_keys o WHERE u.username = %s AND u.user_id = o.user_id", params=[username, ], fetch=True)["results"]
         if userData:
             userData = userData[0]
-            key_data = \
-            SQL_manager.execute_query("SELECT * FROM onion_keys WHERE user_id = %s", params=[userData["user_id"]],
-                                      fetch=True)["results"][0]
             session['username'] = username
-            session['onion_address'] = key_data["onion_address"]
-            session['public_key'] = key_data["public_key"]
+            session['onion_address'] = userData["onion_address"]
+            session['public_key'] = userData["public_key"]
             session['user_id'] = userData["user_id"]
             return redirect(url_for('auth.dashboard'))
 

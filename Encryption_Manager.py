@@ -63,10 +63,12 @@ def encrypt_with_public_key_pem(public_key_pem: str, message: str) -> str:
     # 3. Return as base64 string (safe for storage/JSON)
     return base64.b64encode(ciphertext).decode("utf-8")
 
-def read_private_key(username):
+def read_private_key(username,sym_key):
     with open("Data/Keys/" + username + "/" + "priv_key.pem","r") as f:
-        private_key = serialization.load_pem_private_key(f.read().encode(), backend=default_backend(),password=None)
-    return private_key
+        private_key = f.read()
+    key = load_private_key_from_string(decrypt_message_with_symmetric_key(sym_key, private_key))
+    print(key)
+    return key
 
 
 # Example Usage
