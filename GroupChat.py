@@ -41,9 +41,9 @@ def send_message(group_chat_id,message,sender_id,sym_key):
 
 def get_group_members(group_chat_id):
     sql = """
-    SELECT * FROM groupchatmembers WHERE group_chat_id = %s
+    SELECT groupchatmember.* , u.username FROM groupchatmember,users u WHERE group_id = %s AND u.user_id = groupchatmember.user_id;
     """
-    members = SQL_manager.execute_query(sql,params = (group_chat_id,))["results"]
+    members = SQL_manager.execute_query(sql,params = (group_chat_id,),fetch=True)['results']
     return members
 
 
@@ -51,12 +51,12 @@ def get_group_chats(user_id):
     sql = """
     SELECT g.ID,g.name,g.created_at,g.last_message FROM groupchatmember m , groupchat g WHERE m.user_id = %s AND m.group_id = g.ID;
     """
-    group_chats = SQL_manager.execute_query(sql, params=(user_id,))["results"]
+    group_chats = SQL_manager.execute_query(sql, params=(user_id,),fetch=True)["results"]
     return group_chats
 
 def get_group_chat_messages(user_id,group_chat_id,username,sym_key):
     sql = """
-    SELECT m.sender_id, m.message, m.sent_at, u.username FROM groupchatmessage m, users u WHERE m.group_id = %s AND u.user_id = m.sender_id ORDER BY m.sender_id DESC;
+    SELECT m.sender_id, m.message, m.sent_at, u.username FROM groupchatmessage m, users u WHERE m.group_id = %s AND u.user_id = m.sender_id ORDER BY m.sender_id ;
     """
     message_data = SQL_manager.execute_query(sql,(group_chat_id,),fetch=True)['results']
     messages = []
@@ -102,5 +102,6 @@ def get_group_chat_messages(user_id,group_chat_id,username,sym_key):
 
 #send_message("8cc4d3aa-cafa-4f44-b5d5-04f7a1645706","wow another message'","c92397c2-a2c1-4ab6-a977-7b7e6fed2a66",'k5zl1v0EzLSNVmbGVon3WnSm/4XzvbyDQ3vd3/OgIj4=')
 #send_message("8cc4d3aa-cafa-4f44-b5d5-04f7a1645706","not two messages wow '","10635a59-0a4c-43d6-a128-82902567d17b",'NyOs3vkMBLrJNbbthfIAPIZUGGc1+azyR5tiGynbzEA=')
-print(get_group_chat_messages("c92397c2-a2c1-4ab6-a977-7b7e6fed2a66",'8cc4d3aa-cafa-4f44-b5d5-04f7a1645706',"TNV","k5zl1v0EzLSNVmbGVon3WnSm/4XzvbyDQ3vd3/OgIj4="))
-
+#print(get_group_chat_messages("c92397c2-a2c1-4ab6-a977-7b7e6fed2a66",'8cc4d3aa-cafa-4f44-b5d5-04f7a1645706',"TNV","k5zl1v0EzLSNVmbGVon3WnSm/4XzvbyDQ3vd3/OgIj4="))
+#print(get_group_chats('c92397c2-a2c1-4ab6-a977-7b7e6fed2a66'))
+#print(get_group_members('1c1b5142-9797-4d0a-93a1-6d0796009781'))

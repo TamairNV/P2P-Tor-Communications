@@ -1,18 +1,13 @@
 
-
-
 import uuid
-
 from flask import Blueprint, flash
-
 from datetime import datetime
 from pathlib import Path
-
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 import os
 import secrets
-
 import Encryption_Manager
+import GroupChat
 import SQL_manager
 
 from tor import get_onion_address
@@ -41,7 +36,7 @@ def get_messages(friend):
     waiting_messages = SQL_manager.execute_query(
         "SELECT message,send_at FROM message WHERE receiver_id = %s AND sender_id = %s ORDER BY send_at DESC",
         params=(session["user_id"], session["current_chat_data"]["user_id"]), fetch=True)["results"]
-    print(waiting_messages)
+
 
     os.makedirs("Data/Chat_data/" + session["username"], exist_ok=True)
     with open("Data/Chat_data/" + session["username"] + "/" + session['current_chat_data']['username'], 'a') as f:
@@ -69,7 +64,7 @@ def get_messages(friend):
                 "message":message
             }
             messages.append(m)
-    print(messages)
+
     return messages
 
 
@@ -101,12 +96,9 @@ def send_message():
     print(session['current_chat_data'])
 
     is_online = SQL_manager.execute_query("SELECT is_online FROM users WHERE user_id = %s", (session['current_chat_data']['user_id'],),fetch=True)["results"][0]
-    print(is_online)
     request_message = request.form.get('message')
-    print(session['current_chat_data']['public_key'])
-    print(request_message)
     encrypted_message = Encryption_Manager.encrypt_with_public_key_pem(session['current_chat_data']['public_key'],request_message)
-    print(encrypted_message)
+
     if is_online and False:
         print("sending data p2p")
         P2P.send_data_to_onion(session['current_chat_data']["onion_address"],encrypted_message)
@@ -115,18 +107,43 @@ def send_message():
         SQL_manager.execute_query("INSERT INTO message (sender_id, receiver_id, message) VALUES (%s,%s,%s)",params=(session['user_id'],session['current_chat_data']['user_id'],encrypted_message))
         pass
     syKey = session["sym_key"]
-    print( "symmetric Key: "+syKey)
+
     with open("Data/Chat_data/"+ session["username"] +"/"  + session['current_chat_data']['username'], 'a') as f:
         f.write(datetime.now().strftime("%I:%M%p on %B %d, %Y") + "\n" + session['username'] +"\n" +  Encryption_Manager.encrypt_message_with_symmetric_key(syKey,request_message) + "\n")
-        print("data written to file")
 
-
-
-
-
-    print(request_message)
     messages = get_messages(session['current_chat_data']['username'])
     return render_template('chat.html',friend=session['current_chat_data']['username'],messages =messages)
+
+
+@chat_bp.route("/send_group_chat_message",methods=['POST'])
+def send_group_chat_message():
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    request_message = request.form.get('message')
+
+    GroupChat.send_message(session['current_group_chat_data']['group_chat_id'],request_message,session['user_id'],session['sym_key'])
+    messages = GroupChat.get_group_chat_messages(session['user_id'],session['current_group_chat_data']['group_chat_id'],session['username'],session['sym_key'])
+    people = session['current_group_chat_data']['people']
+
+    session['current_group_chat_data']['messages'] = messages
+    return render_template("group_chat.html", messages = messages , people = people,name = session['current_group_chat_data']['name'])
+
+
+
+@chat_bp.route("/open_group_chat/<group_chat_id>")
+def open_group_chat(group_chat_id):
+    if 'username' not in session:
+        return redirect(url_for('index'))
+
+    messages = GroupChat.get_group_chat_messages(session['user_id'],group_chat_id,session['username'],session['sym_key'])
+    people = GroupChat.get_group_members(group_chat_id)
+    name = "NONE"
+    for chat in session['chats']:
+        if chat['ID'] == group_chat_id:
+            name = chat['name']
+            break
+    session['current_group_chat_data'] = {"messages": messages, "people": people, "group_chat_id": group_chat_id,'name' : name}
+    return render_template("group_chat.html", messages = messages , people = people,group_chat_name =name)
 
 @chat_bp.route('/create_group_chat', methods=['POST','GET'])
 def create_group_chat():
@@ -161,17 +178,12 @@ def create_group_chat():
 
         friend_ids = ""
         friend_member_uuid = ""
-        print("friends: " ,selected_friends)
         for friend in selected_friends:
             friend_ids += friend + ","
             friend_member_uuid += str(uuid.uuid4()) + ","
 
         friend_ids += session['user_id']
         friend_member_uuid += str(uuid.uuid4())
-        print(friend_ids)
-        print(friend_member_uuid)
-
-
 
         random_uuid = str(uuid.uuid4())
 
@@ -180,13 +192,4 @@ def create_group_chat():
         return redirect(url_for('auth.dashboard'))
 
     return render_template('create_group_chat.html',friends = friends)
-
-
-import P2P
-@chat_bp.route('/receive', methods=['POST'])
-def receive_data():
-    data = request.json
-    print(f"Received data: {data}")
-    return jsonify({"status": "success"}), 200
-
 

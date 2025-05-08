@@ -11,14 +11,23 @@
         </div>
 
         <div class="card">
-            <h3>Online Friends</h3>
+            <h3>Friends</h3>
             <ul>
                 {% for friend in friends %}
                 <li><a href="{{ url_for('chat.chat', friend=friend.username) }}">{{ friend.username }}</a></li>
                 {% endfor %}
             </ul>
         </div>
+        <div class="card">
+            <h3>Groups</h3>
+            <ul>
+                {% for chat in group_chats %}
+                <li><a href="{{ url_for('chat.open_group_chat', group_chat_id=chat.ID) }}">{{ chat.name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
+
 
     <div class="main-content">
         <!-- Friend Requests Section -->

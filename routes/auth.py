@@ -11,6 +11,7 @@ import os
 import secrets
 
 import Encryption_Manager
+import GroupChat
 import SQL_manager
 
 from tor import get_onion_address
@@ -104,12 +105,16 @@ def dashboard():
     # Now your 'friends' and 'friend_requests' lists are populated
     print(friend_requests)
     print(friends)
+    chats = GroupChat.get_group_chats(session['user_id'])
+    session['chats'] = chats
+    print(chats)
 
     return render_template('dashboard.html',
                            username=session['username'],
                            onion_address=session.get('onion_address', ''),
                            friends=friends,
-                           friend_requests=friend_requests)
+                           friend_requests=friend_requests,
+                           group_chats=chats)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
