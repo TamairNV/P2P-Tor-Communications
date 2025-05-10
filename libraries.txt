@@ -1,0 +1,5 @@
+Flask==2.0.1
+PyMySQL==1.0.2
+cryptography==36.0.0
+stem==1.8.0
+uuid==1.30
