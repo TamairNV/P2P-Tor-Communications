@@ -1,7 +1,0 @@
-DataDirectory /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_mysql
-HiddenServiceDir /Users/tamer/PycharmProjects/P2P-Tor-Communications/tor_mysql/hidden_service
-HiddenServicePort 3306 127.0.0.1:3306
-Log notice stdout
-SocksPort 0
-ControlPort 0
-

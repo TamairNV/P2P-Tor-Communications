@@ -12,7 +12,7 @@ import secrets
 
 import Encryption_Manager
 import SQL_manager
-from tor import get_onion_address
+from utils.tor import get_onion_address
 friend_bp = Blueprint('friend', __name__)
 
 

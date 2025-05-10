@@ -10,7 +10,7 @@ import Encryption_Manager
 import GroupChat
 import SQL_manager
 
-from tor import get_onion_address
+from utils.tor import get_onion_address
 chat_bp = Blueprint('chat', __name__)
 
 def get_messages(friend):

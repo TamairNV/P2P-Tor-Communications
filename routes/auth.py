@@ -14,7 +14,7 @@ import Encryption_Manager
 import GroupChat
 import SQL_manager
 
-from tor import get_onion_address
+from utils.tor import  get_onion_address
 auth_bp = Blueprint('auth', __name__)
 
 

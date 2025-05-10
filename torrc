@@ -1,0 +1,6 @@
+DataDirectory ./tor/tor_data
+HiddenServiceDir ./tor/tor_hidden_service
+HiddenServicePort 80 127.0.0.1:8000
+Log notice stdout
+SocksPort 9050
+ControlPort 9051

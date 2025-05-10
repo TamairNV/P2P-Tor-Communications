@@ -8,8 +8,19 @@ import SQL_manager
 from routes.auth import auth_bp
 from routes.chat import chat_bp
 from routes.friend import friend_bp
-from tor import get_onion_address
 import Encryption_Manager
+
+import subprocess
+from utils.tor import  get_onion_address
+
+import socket
+s = socket.socket()
+try:
+    s.connect(("127.0.0.1", 9050))
+    print("✅ SOCKS proxy is running on port 9050")
+except:
+    print("❌ Tor SOCKS proxy not available on 9050")
+print(get_onion_address())
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
