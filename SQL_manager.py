@@ -5,6 +5,7 @@ from stem import Signal
 from stem.control import Controller
 
 connections = []
+onion_link = 'loqsfaq44mnyvvjkzggrnhtajg7napunrpmq7etnfg73p7o7qnzh72qd.onion'
 # Configure Tor proxy
 def setup_tor_proxy():
     socks.set_default_proxy(
@@ -32,7 +33,7 @@ def get_connection():
     setup_tor_proxy()
     try:
         return pymysql.connect(
-            host="sogi7mqqdzk3kvxr3yfehmooczayd4mdic6ni6u74qrzqwclggdvruyd.onion",
+            host=onion_link,
             user="root",
             password="Tamer2006",
             database="p2p_communication",
@@ -46,7 +47,7 @@ def get_connection():
         # Try renewing Tor circuit and retry once
         renew_tor_identity()
         return pymysql.connect(
-            host="sogi7mqqdzk3kvxr3yfehmooczayd4mdic6ni6u74qrzqwclggdvruyd.onion",
+            host=onion_link,
             user="root",
             password="Tamer2006",
             database="p2p_communication",
