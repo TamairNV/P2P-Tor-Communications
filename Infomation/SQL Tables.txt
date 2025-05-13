@@ -306,15 +306,25 @@ DELIMITER ;
 
 
 
-CREATE TABLE messageRead(
-    ID INT AUTO_INCREMENT primary key,
-    group_chat_id UUID NOT NULL REFERENCES groupchat(ID),
-    reader UUID NOT NULL REFERENCES users(user_id),
-    message_id UUID REFERENCES groupchatmessage(ID),
-    is_read boolean default 0,
-    read_at TIMESTAMP default NOW()
+CREATE TABLE messageRead (
+    ID INT AUTO_INCREMENT PRIMARY KEY,
+    group_chat_id UUID NOT NULL,
+    reader UUID NOT NULL,
+    message_id UUID,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP DEFAULT NOW(),
 
-)
+    -- Explicit foreign key with CASCADE
+    FOREIGN KEY (message_id)
+        REFERENCES groupchatmessage(ID)
+        ON DELETE CASCADE,  -- Critical fix
+
+    -- Other foreign keys (optional)
+    FOREIGN KEY (group_chat_id)
+        REFERENCES groupchat(ID),
+    FOREIGN KEY (reader)
+        REFERENCES users(user_id)
+);
 
 DELIMITER //
 CREATE OR REPLACE PROCEDURE send_message(
@@ -345,8 +355,8 @@ BEGIN
             (SELECT user_id FROM groupchatmember gcm
                        WHERE gcm.group_id = group_id ORDER BY ID LIMIT 1 OFFSET i);
         SELECT current_reader;
-        INSERT INTO messageread (group_chat_id,reader)
-        VALUES (group_id,current_reader);
+        INSERT INTO messageread (group_chat_id,reader,message_id)
+        VALUES (group_id,current_reader,message_id);
         SET i = i + 1;
     END WHILE;
 
@@ -362,31 +372,6 @@ DELIMITER ;
 
 
 
-
-DELIMITER //
-
-CREATE OR REPLACE PROCEDURE remove_read_group_chat_messages(
-    IN p_group_id UUID
-)
-BEGIN
-    -- Step 1: Delete messages where all recipients have read them
-    DELETE FROM groupchatmessage
-    WHERE group_id = p_group_id
-    AND NOT EXISTS (
-        SELECT 1 FROM messageread
-        WHERE message_id = groupchatmessage.id
-        AND is_read = 0
-    );
-
-    -- Step 2: Clean up any orphaned read records (optional)
-    DELETE FROM messageread
-    WHERE NOT EXISTS (
-        SELECT 1 FROM groupchatmessage
-        WHERE id = messageread.message_id
-    );
-END //
-
-DELIMITER ;
 
 
 

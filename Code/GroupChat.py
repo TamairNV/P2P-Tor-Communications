@@ -69,12 +69,23 @@ def get_group_chats(user_id):
 def read_all_messages(group_chat_id,username):
     print("updating messages to read")
     sql = """
-    UPDATE messageread SET reader = 1 WHERE  users.username = %s AND users.user_id = messageread.reader AND messageread.group_chat_id = %s;
+    UPDATE messageread 
+    SET is_read = 1 
+    WHERE 
+      reader = (SELECT user_id FROM users WHERE username = %s) 
+      AND group_chat_id = %s;
     """
-
-    SQL_manager.execute_query(sql, params=(username,group_chat_id,), fetch=True)
-
-    SQL_manager.get_connection().cursor().callproc('remove_read_group_chat_messages', (group_chat_id,))
+    SQL_manager.execute_query(sql, params=(username,group_chat_id,))
+    sql = """
+        DELETE FROM groupchatmessage
+    WHERE group_id = %s
+    AND NOT EXISTS (
+        SELECT 1 FROM messageread
+        WHERE message_id = groupchatmessage.id
+        AND is_read = 0
+    );
+    """
+    SQL_manager.execute_query(sql, params=(group_chat_id,))
     print("message read")
 
 
@@ -94,18 +105,19 @@ def write_messages_to_file(messages,group_chat_id,username,sym_key):
 def get_group_chat_messages(user_id, group_chat_id, username, sym_key):
 
     sql = """
-SELECT 
-    m.id,
-    m.sender_id,
-    m.message,
-    m.sent_at,
-    u.username,
-    IFNULL(mr.is_read, 0) as is_read_status  -- Default to unread if no record exists
-FROM GroupChatMessage m
-JOIN users u ON u.user_id = m.sender_id
-LEFT JOIN messageRead mr ON mr.message_id = m.id AND mr.reader = %s  -- Your user ID
-WHERE m.group_id = %s  -- The group chat ID
-ORDER BY m.sent_at;
+        SELECT 
+            m.id,
+            m.sender_id,
+            m.message,
+            m.sent_at,
+            u.username,
+            IFNULL(mr.is_read, 0) as is_read_status  -- Default to unread if no record exists
+        FROM GroupChatMessage m
+        JOIN users u ON u.user_id = m.sender_id
+        LEFT JOIN messageRead mr ON mr.message_id = m.id AND mr.reader = %s  -- Your user ID
+        WHERE m.group_id = %s  -- The group chat ID
+        AND mr.is_read = 0
+        ORDER BY m.sent_at;
     """
 
     message_data = SQL_manager.execute_query(sql, (user_id,group_chat_id,), fetch=True)['results']
