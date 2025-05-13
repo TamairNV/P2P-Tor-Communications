@@ -10,39 +10,10 @@ from utils.tor import get_onion_address
 
 auth_bp = Blueprint('auth', __name__)
 
-
-@auth_bp.route('/profile-setup', methods=['GET', 'POST'])
-def profile_setup():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        profile_pic = request.form.get('profile_pic', '')
-        bio = request.form.get('bio', '')
-
-        userData = \
-        SQL_manager.execute_query("SELECT * FROM users WHERE username = %s", params=[username, ], fetch=True)["results"]
-        print(userData)
-        if userData:
-            userData = userData[0]
-            key_data = \
-            SQL_manager.execute_query("SELECT * FROM onion_keys WHERE user_id = %s", params=[userData["user_id"]],
-                                      fetch=True)["results"][0]
-            session['username'] = username
-            session['onion_address'] = key_data["onion_address"]
-            session['public_key'] = key_data["public_key"]
-            session['user_id'] = userData["user_id"]
-
-            with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'r') as f:
-                session['sym_key'] = f.readline().strip()
-            print(session['sym_key'])
-            return redirect(url_for('auth.dashboard'))
-
-    return render_template('profile_setup.html')
-
-
 @auth_bp.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
-        return redirect(url_for('auth.profile_setup'))
+        return redirect(url_for('auth.login'))
     SQL_manager.execute_query("UPDATE users SET is_online = TRUE WHERE user_id = %s", (session['user_id'],))
 
     user_id = session['user_id']

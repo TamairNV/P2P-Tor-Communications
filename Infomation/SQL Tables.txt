@@ -359,3 +359,34 @@ END //
 
 DELIMITER ;
 
+
+
+
+
+DELIMITER //
+
+CREATE OR REPLACE PROCEDURE remove_read_group_chat_messages(
+    IN p_group_id UUID
+)
+BEGIN
+    -- Step 1: Delete messages where all recipients have read them
+    DELETE FROM groupchatmessage
+    WHERE group_id = p_group_id
+    AND NOT EXISTS (
+        SELECT 1 FROM messageread
+        WHERE message_id = groupchatmessage.id
+        AND is_read = 0
+    );
+
+    -- Step 2: Clean up any orphaned read records (optional)
+    DELETE FROM messageread
+    WHERE NOT EXISTS (
+        SELECT 1 FROM groupchatmessage
+        WHERE id = messageread.message_id
+    );
+END //
+
+DELIMITER ;
+
+
+

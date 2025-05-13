@@ -124,7 +124,7 @@ def send_group_chat_message():
     request_message = request.form.get('message')
 
     GroupChat.send_message(session['current_group_chat_data']['group_chat_id'], request_message, session['user_id'],
-                           session['sym_key'])
+                           session['sym_key'],session['username'])
     messages = GroupChat.get_group_chat_messages(session['user_id'],
                                                  session['current_group_chat_data']['group_chat_id'],
                                                  session['username'], session['sym_key'])
