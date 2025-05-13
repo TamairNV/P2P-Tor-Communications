@@ -1,14 +1,13 @@
-import subprocess
 import os
-
+import subprocess
 
 torrc = f"""
 DataDirectory {os.path.abspath("tor/tor_data")}
 HiddenServiceDir {os.path.abspath("tor/tor_hidden_service")}
 HiddenServicePort 80 127.0.0.1:8000
 
-HiddenServiceDir {os.path.abspath("tor/tor_hidden_service_sql")}
-HiddenServicePort 3306 127.0.0.1:3306
+HiddenServiceDir {os.path.abspath("tor/tor_hidden_service_mysql")}
+HiddenServicePort 3306 127.0.0.1:3306            
 Log notice stdout
 SocksPort 9050
 ControlPort 9051
@@ -42,7 +41,7 @@ else:
             print("No process listening on port 9050.")
 
         os.system(f"kill -9 {pid}")
-    except :
+    except:
         print("No process listening on port 9050.")
     os.system(f"cd {modified_path}")
     os.system(f"tor -f {os.path.abspath('torrc')}")
@@ -54,6 +53,3 @@ else:
     cd {modified_path}
     tor -f {os.path.abspath("torrc")}
     """)
-
-
-

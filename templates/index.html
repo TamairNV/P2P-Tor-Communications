@@ -6,13 +6,13 @@
 <div class="card">
     <h2>Welcome to TorChat</h2>
     <p>A private, decentralized messaging platform</p>
-    
+
     <div class="onion-address">
         Your onion address: <strong>{{ onion_address }}</strong>
     </div>
-    
+
     <p>This is your unique private address. Share it with friends to connect.</p>
-    
+
     <a href="{{ url_for('auth.profile_setup') }}" class="btn">Continue to Profile Setup</a>
 </div>
 {% endblock %}

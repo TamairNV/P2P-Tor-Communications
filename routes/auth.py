@@ -1,20 +1,13 @@
-import base64
+import os
 import uuid
 
 from flask import Blueprint
+from flask import render_template, request, session, redirect, url_for, flash
 
-from datetime import datetime
-from pathlib import Path
+from Code import GroupChat
+from utils import Encryption_Manager, SQL_manager
+from utils.tor import get_onion_address
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for,flash
-import os
-import secrets
-
-import Encryption_Manager
-import GroupChat
-import SQL_manager
-
-from utils.tor import  get_onion_address
 auth_bp = Blueprint('auth', __name__)
 
 
@@ -25,11 +18,14 @@ def profile_setup():
         profile_pic = request.form.get('profile_pic', '')
         bio = request.form.get('bio', '')
 
-        userData = SQL_manager.execute_query("SELECT * FROM users WHERE username = %s",params=[username,], fetch=True)["results"]
+        userData = \
+        SQL_manager.execute_query("SELECT * FROM users WHERE username = %s", params=[username, ], fetch=True)["results"]
         print(userData)
         if userData:
             userData = userData[0]
-            key_data = SQL_manager.execute_query("SELECT * FROM onion_keys WHERE user_id = %s",params=[userData["user_id"]], fetch=True)["results"][0]
+            key_data = \
+            SQL_manager.execute_query("SELECT * FROM onion_keys WHERE user_id = %s", params=[userData["user_id"]],
+                                      fetch=True)["results"][0]
             session['username'] = username
             session['onion_address'] = key_data["onion_address"]
             session['public_key'] = key_data["public_key"]
@@ -96,7 +92,7 @@ def dashboard():
 
         if row_type == 'friend':
             # For friends, just add the username to the friends list
-            friends.append({'username' : username})
+            friends.append({'username': username})
         elif row_type == 'friend_request':
             # For friend requests, add username and created_at to the friend_requests list
             created_at = row['created_at']  # Access the 'created_at' column
@@ -107,7 +103,6 @@ def dashboard():
     print(friends)
     chats = GroupChat.get_group_chats(session['user_id'])
     session['chats'] = chats
-    print(chats)
 
     return render_template('dashboard.html',
                            username=session['username'],
@@ -123,12 +118,13 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-
-        output = SQL_manager.execute_query("SELECT p.salt,o.public_key FROM password p,users u,onion_keys o WHERE  u.username = %s AND u.user_id = p.user_id AND o.user_id = u.user_id", params=[username], fetch=True)["results"]
+        output = SQL_manager.execute_query(
+            "SELECT p.salt,o.public_key FROM password p,users u,onion_keys o WHERE  u.username = %s AND u.user_id = p.user_id AND o.user_id = u.user_id",
+            params=[username], fetch=True)["results"]
         if not output:
             return redirect(url_for('auth.login'))
 
-        salt,pub_key = output[0]["salt"], output[0]["public_key"]
+        salt, pub_key = output[0]["salt"], output[0]["public_key"]
 
         sym_key = Encryption_Manager.hash_password(password, salt.encode())
         session["sym_key"] = sym_key
@@ -141,7 +137,9 @@ def login():
                 return redirect(url_for('auth.login'))
 
         userData = \
-        SQL_manager.execute_query("SELECT * FROM users u ,onion_keys o WHERE u.username = %s AND u.user_id = o.user_id", params=[username, ], fetch=True)["results"]
+            SQL_manager.execute_query(
+                "SELECT * FROM users u ,onion_keys o WHERE u.username = %s AND u.user_id = o.user_id",
+                params=[username, ], fetch=True)["results"]
         if userData:
             userData = userData[0]
             session['username'] = username
@@ -164,8 +162,9 @@ def signup():
             flash('Passwords do not match!', 'error')
             return redirect(url_for('auth.signup'))
 
-
-        is_name_taken= SQL_manager.execute_query("SELECT 1 FROM users WHERE username = %s LIMIT 1", params = (username,),fetch=True)['results']
+        is_name_taken = \
+        SQL_manager.execute_query("SELECT 1 FROM users WHERE username = %s LIMIT 1", params=(username,), fetch=True)[
+            'results']
 
         if is_name_taken:
             flash('Username is already taken!', 'error')
@@ -175,8 +174,7 @@ def signup():
         random_uuid = str(uuid.uuid4())
         keys = Encryption_Manager.generate_rsa_key_pair()
 
-        sym_key,salt = Encryption_Manager.create_key_from_password(password)
-
+        sym_key, salt = Encryption_Manager.create_key_from_password(password)
 
         session['username'] = username
         session['onion_address'] = onion_address
@@ -186,13 +184,12 @@ def signup():
 
         str_prv, str_pub = Encryption_Manager.keys_to_strings(keys[0], keys[1])
         with open("Data/Keys/" + session["username"] + "/" + "priv_key.pem", 'wb') as f:
-            key =  Encryption_Manager.encrypt_message_with_symmetric_key(sym_key, str_prv)
+            key = Encryption_Manager.encrypt_message_with_symmetric_key(sym_key, str_prv)
             f.write(key.encode())
 
         symmetric_key = Encryption_Manager.create_symmetric_key()
         with open(f"Data/Keys/" + session["username"] + "/" + "sym_key.pem", 'wb') as f:
             f.write(symmetric_key.encode())
-
 
         session['public_key'] = str_pub
         session['sym_key'] = symmetric_key
@@ -204,6 +201,5 @@ def signup():
         ))
         print("key added")
         return redirect(url_for('auth.dashboard'))
-
 
     return render_template('signup.html')

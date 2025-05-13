@@ -1,11 +1,14 @@
+import socket
+
 import pymysql
 import socks
-import socket
 from stem import Signal
 from stem.control import Controller
 
 connections = []
-onion_link = 'loqsfaq44mnyvvjkzggrnhtajg7napunrpmq7etnfg73p7o7qnzh72qd.onion'
+onion_link = '4wfv3o2lpxgz456iv7jubx65frp6ivbzbro2vbxflzmasldjryxv76ad.onion'
+
+
 # Configure Tor proxy
 def setup_tor_proxy():
     socks.set_default_proxy(
@@ -107,4 +110,3 @@ def execute_query(query, params=None, fetch=False):
             release_connection(conn)
 
     return result
-

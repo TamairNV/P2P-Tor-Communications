@@ -3,16 +3,21 @@
 {% block title %}Chat with {{ friend }}{% endblock %}
 
 {% block content %}
+
+<meta http-equiv="refresh" content="10">
 <div class="card">
     <h2>{{ group_chat_name }}</h2>
     <div class="chat-layout">
 
-                <div class="side-chatters">
+        <div class="side-chatters">
             {% for person in people %}
-            <div class="person">
-                <strong>{{ person.username }}</strong>
-            </div>
+            {% if person.username != username  %}
+             <form method="POST" action="{{ url_for('chat.chat',friend=person.username)}}">
+                <button type="submit" class="btn" name="friend" value="{{ person.username }}">{{ person.username }}</button>
+              </form>
+            {% endif %}
             {% endfor %}
+
         </div>
         <div class="chat-container">
             <div class="chat-messages" id="chat-messages">

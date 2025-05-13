@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>TorChat - {% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>TorChat</h1>
-            <div class="tor-status">
-                <span class="tor-indicator"></span>
-                Tor Connected
-            </div>
-        </header>
-        {% block content %}{% endblock %}
-    </div>
+<div class="container">
+
+
+    <header>
+                <h1>
+            <a href="{{ url_for('auth.dashboard') }}" style="text-decoration: none; color: inherit; cursor: default;">
+                Tor Chat
+            </a>
+        </h1>
+        <div class="tor-status">
+            <span class="tor-indicator"></span>
+            Tor Connected
+        </div>
+    </header>
+    {% block content %}{% endblock %}
+</div>
 
 </body>
 </html>

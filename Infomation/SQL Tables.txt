@@ -310,6 +310,7 @@ CREATE TABLE messageRead(
     ID INT AUTO_INCREMENT primary key,
     group_chat_id UUID NOT NULL REFERENCES groupchat(ID),
     reader UUID NOT NULL REFERENCES users(user_id),
+    message_id UUID REFERENCES groupchatmessage(ID),
     is_read boolean default 0,
     read_at TIMESTAMP default NOW()
 

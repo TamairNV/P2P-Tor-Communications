@@ -1,14 +1,9 @@
-import base64
-import os
-
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding, padding
-from cryptography.hazmat.primitives import hashes
-
 import hashlib
 
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import padding as asym_padding, padding
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
@@ -63,11 +58,16 @@ def encrypt_with_public_key_pem(public_key_pem: str, message: str) -> str:
     # 3. Return as base64 string (safe for storage/JSON)
     return base64.b64encode(ciphertext).decode("utf-8")
 
-def read_private_key(username,sym_key):
-    with open("Data/Keys/" + username + "/" + "priv_key.pem","r") as f:
+
+def read_private_key(username, sym_key):
+    current_dir = os.path.dirname(__file__)
+    data_path = os.path.join(current_dir, '..', 'Data', 'Keys', username, 'priv_key.pem')
+    # Normalize the path (removes the '..')
+    normalized_path = os.path.normpath(data_path)
+    with open(normalized_path, "r") as f:
         private_key = f.read()
     key = load_private_key_from_string(decrypt_message_with_symmetric_key(sym_key, private_key))
-    print(key)
+
     return key
 
 
@@ -105,7 +105,6 @@ def load_private_key_from_string(private_pem_str, password=None):
         backend=default_backend()
     )
     return private_key
-
 
 
 import base64
@@ -168,7 +167,9 @@ def decrypt_message_with_symmetric_key(symmetric_key: str, encrypted_message: st
 
     return message.decode('utf-8')
 
+
 import bcrypt
+
 
 def create_key_from_password(password: str) -> tuple[str, bytes]:
     salt = bcrypt.gensalt()
@@ -181,9 +182,10 @@ def create_key_from_password(password: str) -> tuple[str, bytes]:
         backend=default_backend()
     )
     key = kdf.derive(password.encode())
-    return (base64.b64encode(key).decode(),salt)  # Base64 for compatibility
+    return (base64.b64encode(key).decode(), salt)  # Base64 for compatibility
 
-def hash_password(password,salt):
+
+def hash_password(password, salt):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,  # AES-256 key size
@@ -196,20 +198,3 @@ def hash_password(password,salt):
     return (base64.b64encode(key).decode())
 
 
-
-if __name__ == "__main__":
-
-    password = "hello"
-    hashed_password, salt = create_key_from_password(password)
-    #save salt
-    print(len(salt.decode()))
-    key = "123123"
-    print(hashed_password, len(hashed_password))
-    enc_key = encrypt_message_with_symmetric_key(hashed_password, key)
-    print("key ency "+base64.b64encode(enc_key.encode()).decode())
-
-    entered_password = "hello"
-    new_hashed_password = hash_password(entered_password,salt)
-
-    key_de = decrypt_message_with_symmetric_key(new_hashed_password, enc_key)
-    print(key_de)
