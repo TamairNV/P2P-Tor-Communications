@@ -9,6 +9,11 @@
             <h3>{{ username }}</h3>
         </div>
         <div class="card">
+              <form method="POST" action="/auth/dashboard">
+            <textarea name="search_friend_input" rows="1" cols="17" placeholder="Search"></textarea>
+            <br>
+            <input type="submit" value="Search">
+                  </form>
             <h3>Friends</h3>
             <ul>
                 {% for friend in friends %}
@@ -30,6 +35,7 @@
     <div class="main-content">
         <!-- Friend Requests Section -->
         <div class="card">
+
             <h2>Pending Friend Requests</h2>
             {% if friend_requests %}
             <ul class="friend-requests">
@@ -60,6 +66,7 @@
             <div class="quick-actions">
                 <a href="{{ url_for('friend.add_friend') }}" class="btn">Add Friend</a>
                 <a href="{{ url_for('chat.create_group_chat') }}" class="btn">Create Group Chat</a>
+                <a href="{{ url_for('auth.logout') }}" class="btn">Log Out</a>
             </div>
         </div>
     </div>

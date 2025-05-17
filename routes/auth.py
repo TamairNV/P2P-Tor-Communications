@@ -10,7 +10,7 @@ from utils.tor import get_onion_address
 
 auth_bp = Blueprint('auth', __name__)
 
-@auth_bp.route('/dashboard')
+@auth_bp.route('/dashboard',methods=['POST','GET'])
 def dashboard():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
@@ -74,6 +74,9 @@ def dashboard():
     print(friends)
     chats = GroupChat.get_group_chats(session['user_id'])
     session['chats'] = chats
+    if request.method == 'POST':
+        text_content = request.form['search_friend_input']
+
 
     return render_template('dashboard.html',
                            username=session['username'],
@@ -82,6 +85,16 @@ def dashboard():
                            friend_requests=friend_requests,
                            group_chats=chats)
 
+def sort_friends():
+    
+
+@auth_bp.route('/logout')
+def logout():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.login'))
+
+    session.clear()
+    return redirect(url_for('auth.login'))
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
