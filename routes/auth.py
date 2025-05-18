@@ -3,7 +3,7 @@ import uuid
 
 from flask import Blueprint
 from flask import render_template, request, session, redirect, url_for, flash
-
+from Levenshtein import distance as levenshtein_distance
 from Code import GroupChat
 from utils import Encryption_Manager, SQL_manager
 from utils.tor import get_onion_address
@@ -75,7 +75,12 @@ def dashboard():
     chats = GroupChat.get_group_chats(session['user_id'])
     session['chats'] = chats
     if request.method == 'POST':
-        text_content = request.form['search_friend_input']
+        if 'search_group_input' in request.form and request.form['search_group_input'].strip():
+            chats = sort_group_chat(chats,request.form['search_group_input'])
+
+        if 'search_friend_input' in request.form and request.form['search_friend_input'].strip():
+            friends = sort_friends(friends,request.form['search_friend_input'])
+
 
 
     return render_template('dashboard.html',
@@ -85,8 +90,30 @@ def dashboard():
                            friend_requests=friend_requests,
                            group_chats=chats)
 
-def sort_friends():
-    
+def sort_friends(users,input):
+    sorted_users = sorted(
+        users,
+        key=lambda word: levenshtein_distance(input, word['username'])
+    )
+    return sorted_users
+
+def sort_group_chat(groups, input_name):
+    print(groups)
+    # Sort by name similarity first
+    groups_sorted_by_name = sorted(
+        groups,
+        key=lambda group: levenshtein_distance(input_name, group['name'])
+    )
+
+    # Sort again: groups where input_name is a member come first
+    groups_sorted = sorted(
+        groups_sorted_by_name,
+        key=lambda group: 0 if input_name in group['members_dict'] else 1
+    )
+
+    return groups_sorted
+
+
 
 @auth_bp.route('/logout')
 def logout():

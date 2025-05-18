@@ -9,10 +9,10 @@
             <h3>{{ username }}</h3>
         </div>
         <div class="card">
-              <form method="POST" action="/auth/dashboard">
+              <form class = 'search-form' method="POST" action="/auth/dashboard">
             <textarea name="search_friend_input" rows="1" cols="17" placeholder="Search"></textarea>
             <br>
-            <input type="submit" value="Search">
+            <input class = 'search' type="submit" value="🔍">
                   </form>
             <h3>Friends</h3>
             <ul>
@@ -22,6 +22,11 @@
             </ul>
         </div>
         <div class="card">
+                          <form class = 'search-form' method="POST" action="/auth/dashboard">
+            <textarea name="search_group_input" rows="1" cols="17" placeholder="Search"></textarea>
+            <br>
+            <input class = 'search' type="submit" value="🔍">
+                  </form>
             <h3>Groups</h3>
             <ul>
                 {% for chat in group_chats %}

@@ -61,7 +61,31 @@ def get_group_members(group_chat_id):
 
 def get_group_chats(user_id):
     sql = """
-    SELECT g.ID,g.name,g.created_at,g.last_message FROM groupchatmember m , groupchat g WHERE m.user_id = %s AND m.group_id = g.ID;
+    SELECT
+    g.ID,
+    g.name,
+    g.created_at,
+    g.last_message,
+    (
+        SELECT JSON_OBJECTAGG(
+            g2.name,
+            (
+                SELECT JSON_ARRAYAGG(u.username)
+                FROM groupchatmember m2
+                JOIN users u ON m2.user_id = u.user_id
+                WHERE m2.group_id = g2.ID
+            )
+        )
+        FROM groupchat g2
+        WHERE g2.ID = g.ID
+    ) AS members_dict
+FROM
+    groupchatmember m
+JOIN
+    groupchat g ON m.group_id = g.ID
+WHERE
+    m.user_id = %s;
+
     """
     group_chats = SQL_manager.execute_query(sql, params=(user_id,), fetch=True)["results"]
     return group_chats
